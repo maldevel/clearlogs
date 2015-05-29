@@ -32,18 +32,26 @@ namespace ClearLogs
 
         private String _Start_Process(String executable, String args)
         {
-            Process p = new Process();
-            ProcessStartInfo psi = new ProcessStartInfo(executable);
-            psi.Arguments = args;
-            psi.CreateNoWindow = true;
-            psi.RedirectStandardOutput = true;
-            psi.UseShellExecute = false;
-            p.StartInfo = psi;
-            p.Start();
-            StreamReader processOutput = p.StandardOutput;
-            String output = processOutput.ReadToEnd();
-            p.WaitForExit();
-            return output;
+            try
+            {
+                Process p = new Process();
+                ProcessStartInfo psi = new ProcessStartInfo(executable);
+                psi.Arguments = args;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.UseShellExecute = false;
+                p.StartInfo = psi;
+                p.Start();
+                StreamReader processOutput = p.StandardOutput;
+                String output = processOutput.ReadToEnd();
+                p.WaitForExit();
+                return output;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
         }
 
         private void cancel_Click(object sender, EventArgs e)
@@ -56,33 +64,40 @@ namespace ClearLogs
 
         private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
         {
-            BackgroundWorker worker = sender as BackgroundWorker;
-
-            List<String> eventLogs = _Start_Process("wevtutil.exe", "el")
-                                    .Split(new string[] { "\r\n" },
-                                        StringSplitOptions.RemoveEmptyEntries)
-                                    .ToList();
-
-            int i = 1;
-            foreach (String item in eventLogs)
+            try
             {
+                BackgroundWorker worker = sender as BackgroundWorker;
 
-                if (worker.CancellationPending == true)
+                List<String> eventLogs = _Start_Process("wevtutil.exe", "el")
+                                        .Split(new string[] { "\r\n" },
+                                            StringSplitOptions.RemoveEmptyEntries)
+                                        .ToList();
+
+                int i = 1;
+                foreach (String item in eventLogs)
                 {
-                    e.Cancel = true;
-                    break;
-                }
-                else
-                {
-                    Invoke((MethodInvoker)delegate
+
+                    if (worker.CancellationPending == true)
                     {
-                        report.AppendText("Cleaning Log " + item + "\r\n");
-                        report.AppendText(_Start_Process("wevtutil.exe", "cl " + item) + "..\r\n");
-                    });
-                    
-                    System.Threading.Thread.Sleep(50);
-                    worker.ReportProgress((100 * i++) / eventLogs.Count);
+                        e.Cancel = true;
+                        break;
+                    }
+                    else
+                    {
+                        Invoke((MethodInvoker)delegate
+                        {
+                            report.AppendText("Cleaning Log " + item + "\r\n");
+                            report.AppendText(_Start_Process("wevtutil.exe", "cl " + item) + "..\r\n");
+                        });
+
+                        System.Threading.Thread.Sleep(50);
+                        worker.ReportProgress((100 * i++) / eventLogs.Count);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -106,6 +121,11 @@ namespace ClearLogs
             {
                 reportLabel.Text = "Done!";
             }
+        }
+
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Environment.Exit(0);
         }
     }
 }
